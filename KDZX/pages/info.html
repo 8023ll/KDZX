@@ -1,0 +1,339 @@
+<!-- 咨询管理 -->
+<div>
+    <div class="info-manage">
+        <!-- 按钮组 -->
+        <div class="buttons">
+            <button type="button" class="btn btn-primary">新增</button>
+            <button type="button" class="btn btn-danger">批量删除</button>
+            <select name="infocategory" class="pull-right">
+                <!--                 <option value="-1">请选择</option> -->
+            </select>
+        </div>
+        <!-- 表格 -->
+        <table class="table table-bordered table-striped table-hover table-condensed" id="table-div">
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>文章标题</th>
+                    <th>所属栏目</th>
+                    <th>排列方式</th>
+                    <th>作者</th>
+                    <th>发布时间</th>
+                    <th>阅读次数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <!-- 分页 -->
+        <div class="page">
+            <ul class="pagination"></ul>
+        </div>
+        <!-- 模态框 -->
+        <div class="modal" id="infoModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header text-center">
+                        <button class="btn btn-default close" data-dismiss="modal">&times;</button>
+                        <div class="modal-title col-sm-11 text-center">
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <form class="form">
+                            <div class="form-group">
+                                <label for="">标题</label>
+                                <input type="text" name="infoTitle" class="form-control" />
+                            </div>
+                            <div class="form-group">
+                                <label for="">所属栏目</label>
+                                <select name="infoCategory" class="form-control">
+                                    <option value="-1">请选择</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="">列表样式</label>
+                                <div class="radio">
+                                    <label for="style-one" class="col-sm-6">
+                                        <input type="radio" name="infoList" id="style-one" value="style-one" class="col-sm-1" />
+                                        <img src="./images/style-one.jpg" alt="" />
+                                    </label>
+                                    <label for="style-two" class="col-sm-6">
+                                        <input type="radio" name="infoList" id="style-two" value="style-two" class="col-sm-1" />
+                                        <img src="./images/style-two.jpg" alt="" />
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="">正文</label>
+                                <textarea name="infoContent" id="" cols="30" rows="6" class="form-control"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <span class="warning">请输入完整的信息</span>
+                        <button class="btn btn-success btn-sm saveBtn">发 布</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var height = $(window).height();
+    $('.modal,.modal-dialog,.modal-dialog,.ad_aside,.ad_section').attr('style', 'height:' + height + 'px');
+    var page = 1;
+    var pageSize = 10;
+    var total = 0;
+    var datas = [];
+    var parents = [];
+    var cateId = 0;
+    //================增删改查的ajax请求
+    //新增或修改
+    function saveOrUpdate(obj, url) {
+        getAjax(url, 'POST', obj, function(res) {
+            findAll(cateId);
+        }, function(error) {
+            console.log(error, '=====');
+        });
+    }
+    //删除单个
+    function deleteById(obj, url) {
+        getAjax(url, 'GET', obj, function(res) {
+            findAll(cateId);
+        }, function(error) {
+            console.log('error=====');
+        });
+    }
+    //删除多个
+    function batchDelete(obj, url) {
+        getAjax(url, 'POST', obj, function(res) {
+            findAll(cateId);
+        }, function(error) {
+            console.log(error, '=====');
+        });
+    }
+    /*1.页面增删改查===================*/
+    // 01栏目管理获取数据==============
+    function findAll(cateId) {
+        $('info-manage #table-div tr:not(:first)').remove();
+        var obj = {
+            page: 0,
+            pageSize: 1000,
+            categoryId: cateId
+        };
+        getAjax('/manager/article/findArticle', 'GET', obj, function(res) {
+                // 渲染
+                if (res.status == 200) {
+                    //分页做准备
+                    datas = res.data.list.slice();
+                    var dat = res.data.list;
+                    var result = dat.slice();
+                    var pageAllObj = [];
+                    var pageObj = {};
+                    var data = [];
+
+                    
+                    total = Math.ceil(result.length / pageSize);
+                    for (var i = 0; i < total; i++) {
+                        for (var j = 0; j < pageSize; j++) {
+                            if (result[j]) {
+                                data.push(result[j]);
+                            }
+                        }
+                        pageObj = {
+                            page: i + 1,
+                            pageSize: pageSize,
+                            data: data,
+                            total: total
+                        };
+                        pageAllObj.push(pageObj);
+                        pageObj = {};
+                        data = [];
+                        result.splice(0, pageSize);
+                    }
+                    if(page==1&&pageAllObj.length < page){
+                        dat=[];
+                    }else{
+                      dat = pageAllObj.length > 0 ? pageAllObj[page - 1].data : [];
+                    }
+                    //渲染
+                    var str = '';
+                    if (dat && dat.length > 0) {
+                        dat.forEach(function(item) {
+                            str += `
+                        <tr>
+                            <td><input class ="checkbox" type="checkbox" value="` + item.id + `"></td>
+                                <td>` + item.title + `</td>
+                                <td>` + item.category.name + `</td>
+                                <td>` + item.liststyle + `</td>
+                                <td>` + item.author + `</td>
+                                <td>` + item.publishtime + `</td>
+                                <td>` + item.readtimes + `</td>
+                                <td><span class="glyphicon glyphicon-edit to-update" data-id="` + item.id + `"></span><span  class="glyphicon glyphicon-trash" data-id="` + item.id + `"></span></td>
+                        </tr>
+                        `;
+                        });
+                    }
+                    $('#table-div tbody').html(str);
+                    if (total > 1) {
+                        $('.pagination').show();
+                        setPaginator(page, total, findAll, cateId);
+                    } else {
+                        $('.pagination').hide();
+                    }
+                    console.log(res.data, res.data.page, res.data.total, '查找数据');
+                }
+            },
+            function(error) {
+                console.log(error, '=====');
+            });
+    }
+    //渲染下拉框
+    findAllCategory();
+
+    function findAllCategory() {
+        $('select').empty();
+        getAjax('/manager/category/findAllCategory', 'GET', null, function(res) {
+            cateId = res.data[0].id;
+            //分页做准备
+            parents = res.data.map(function(item) {
+                var obj = {
+                    name: item.name,
+                    id: item.id
+                };
+                return obj;
+            });
+            parents.forEach(function(item) {
+                $('<option value="' + item.id + '">' + item.name + '</option>').appendTo($('select'));
+            });
+            $('select').val(cateId);
+            findAll(cateId);
+        });
+    }
+    //下拉框改变
+    $('.buttons select').first().change(function(event) {
+        cateId = $('.buttons select').val();
+        findAll(cateId);
+    });
+    //02删除==================================
+    $('#table-div tbody').click(function(e) {
+        var target = e.target;
+        var id = target.getAttribute("data-id");
+        //删除单个
+        if ($(target).hasClass('glyphicon-trash')) {
+            deleteById({ id: id }, '/manager/article/deleteArticleById');
+        } else if ($(target).hasClass('glyphicon-edit')) {
+            $('.warning').hide();
+            //假设是当前要修改的对象
+            //通过修改按钮获取当前要修改的id,向后台拿数据
+            var currentId = $(e.target).attr('data-id');
+            var obj = (datas.filter(function(item) {
+                return item.id == currentId;
+            }))[0];
+            var author = obj.author;
+            var publishtime = obj.publishtime;
+            var readtimes = obj.readtimes;
+            //设置值
+            $('.modal [type=text]').eq(0).val(obj.title);
+            $('.modal input[type=radio]').each(function(index, el) {
+                if ($(el).attr('id') == obj.liststyle) {
+                    $(el).prop('checked', 'true');
+                }
+            });
+            $('.modal textarea').val(obj.content);
+            $('.modal select').val(cateId);
+            $('.modal-title').text('修改资讯信息');
+            $('#infoModal').modal('show');
+            // 清空表单数据,显示模态框
+            $('.saveBtn').off('click').on('click', function save() {
+                var title = $('.modal [type=text]').eq(0).val();
+                cateId = $('.modal select').val();
+                var liststyle = $('.modal input[type=radio]:checked').val();
+                var content = $('.modal textarea').val();
+                if (title && liststyle && cateId && content) {
+                    var obj = {
+                        id: currentId,
+                        title: title,
+                        categoryId: cateId,
+                        liststyle: liststyle,
+                        content: content,
+                        author: author,
+                        publishtime: publishtime,
+                        readtimes: readtimes
+                    };
+                    //提交数据给后台
+                    saveOrUpdate(obj, '/manager/article/saveOrUpdateArticle');
+                    $('#infoModal').modal('hide');
+                    $('select').val(cateId);
+                    //提交成功的回调函数里,更新数据,关闭模态框 
+                } else {
+                    $('.warning').show();
+                }
+            });
+        }
+    });
+    //03新增/删除多个===================================
+    $('.info-manage .buttons').click(function(e) {
+        var target = e.target;
+        if (target.innerText == '批量删除') {
+            var ids = Array.prototype.slice.call(document.getElementsByClassName("checkbox"), 0).filter(function(item) {
+                return item.checked;
+            }).map(function(item) {
+                return item.value;
+            });
+            batchDelete(encodeFormData({ ids: ids }), '/manager/article/batchDeleteArticle');
+        } else if (target.innerText == '新增') {
+            $('.warning').hide();
+            // 清空表单数据,显示模态框
+            $('.modal [type=text]').eq(0).val(null);
+            $('.modal input[type=radio]:checked').prop('checked', false);
+            $('.modal textarea').val(null);
+            $('.modal select').val(cateId);
+            $('.modal-title').text('新增资讯信息');
+            $('#infoModal').modal('show');
+            $('.saveBtn').off('click').on('click', function save() {
+                var title = $('.modal [type=text]').eq(0).val();
+                cateId = $('.modal select').val();
+                var liststyle = $('.modal input[type=radio]:checked').val();
+                var content = $('.modal textarea').val();
+                if (title && liststyle && cateId && content) {
+                    var obj = {
+                        title: title,
+                        categoryId: cateId,
+                        liststyle: liststyle,
+                        content: content
+                    };
+                    //提交数据给后台
+                    saveOrUpdate(obj, '/manager/article/saveOrUpdateArticle');
+                    $('#infoModal').modal('hide');
+                    $('select').val(cateId);
+                    //提交成功的回调函数里,更新数据,关闭模态框 
+                } else {
+                    $('.warning').show();
+                }
+            });
+        }
+    });
+
+    /*2.实现分页渲染======================*/
+    function setPaginator(pageCurr, pageSum, callback, cateId) {
+        /*获取需要初始的元素 使用bootstrapPaginator方法*/
+        $('.pagination').bootstrapPaginator({
+            /*当前使用的是3版本的bootstrap*/
+            bootstrapMajorVersion: 3,
+            /*配置的字体大小是小号*/
+            size: 'small',
+            /*当前页*/
+            currentPage: pageCurr,
+            /*一共多少页*/
+            totalPages: pageSum,
+            /*点击页面事件*/
+            onPageClicked: function(event, originalEvent, type, pag) {
+                page = pag;
+                /*改变当前页再渲染 page当前点击的按钮的页面*/
+                callback && callback(cateId);
+            }
+        });
+    }
+    </script>
+</div>

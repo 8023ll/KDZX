@@ -1,0 +1,275 @@
+<!-- 栏目管理 -->
+
+<div>
+    <div class="category-manage">
+        <!-- 按钮组 -->
+        <div class="buttons">
+            <button type="button" class="btn btn-primary">新增</button>
+            <button type="button" class="btn btn-danger">批量删除</button>
+        </div>
+        <!-- 表格 -->
+        <table class="table table-bordered table-striped table-hover table-condensed" id="table-div">
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>名称</th>
+                    <th>父栏目</th>
+                    <th>描述</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <!-- 分页 -->
+        <div class="page">
+            <ul class="pagination"></ul>
+        </div>
+    </div>
+    <!-- 模态框 -->
+    <div class="modal" id="categoryModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <!-- 右上角的叉号 -->
+                    <button class="btn btn-default close" id="xml" data-dismiss="modal">&times;</button><span class="modal-title"></span></div>
+                <div class="modal-body">
+                    <!-- 录入信息表单 -->
+                    <form action="" class="form-horizontal">
+                        <!-- 用户名 -->
+                        <div class="form-group">
+                            <label for="" class="col-sm-12 text-left" id="name">栏目名称:</label>
+                            <div class="col-sm-12">
+                                <input type="text" class="form-control" />
+                            </div>
+                        </div>
+                        <!-- 父栏目 -->
+                        <div class="form-group">
+                            <label for="" class="col-sm-12 text-left" id="parentName">父栏目:</label>
+                            <div class="col-sm-12">
+                                <select name="parentName" id="parentName" class="form-control">
+                                    <option value="">请选择</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- 描述 -->
+                        <div class="form-group">
+                            <label for="" class="col-sm-12 text-left" id="comment">描述:</label>
+                            <div class="col-sm-12">
+                                <textarea name="comment" id="comment" cols="30" rows="10" class="form-control"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <span class="warning">请输入完整的信息</span>
+                    <button class="btn btn-primary" id="to-save" type="button">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var height = $(window).height();
+    $('.modal,.modal-dialog,.modal-dialog,.ad_aside,.ad_section').attr('style', 'height:' + height + 'px');
+    // 页码
+    page = 1;
+    //一页有多少条数据
+    pageSize = 10;
+    //总页数
+    total = 0;
+    //后台数据的备份-用于修改数据
+    datas = [];
+    var parents = [];
+    /*1.页面增删改查===================*/
+    // 01栏目管理获取数据==============
+    findAll();
+
+    function findAll() {
+        getAjax('/manager/category/findAllCategory', 'GET', null, function(res) {
+            //分页做准备
+            datas = res.data.slice();
+            parents = res.data.map(function(item) {
+                var obj = {
+                    name: item.name,
+                    id: item.id
+                };
+                return obj;
+            });
+            $('.modal select').html('<option value="-1">请选择</option>');
+            parents.forEach(function(item) {
+                $('<option value="' + item.id + '">' + item.name + '</option>').appendTo($('.modal select'));
+            });
+            var result = res.data.slice();
+            var pageAllObj = [];
+            var pageObj = {};
+            var data = [];
+            total = Math.ceil(result.length / pageSize);
+            for (var i = 0; i < total; i++) {
+                for (var j = 0; j < pageSize; j++) {
+                    if (result[j]) {
+                        data.push(result[j]);
+                    }
+                }
+                pageObj = {
+                    page: i + 1,
+                    pageSize: pageSize,
+                    data: data,
+                    total: total
+                };
+                pageAllObj.push(pageObj);
+                pageObj = {};
+                data = [];
+                result.splice(0, pageSize);
+            }
+            if (page == 1 && pageAllObj.length < page) {
+                res.data = [];
+            } else {
+                res.data = pageAllObj.length >= page ? pageAllObj[page - 1].data : pageAllObj[page - 2].data;
+            }
+            //渲染
+            var str = '';
+            if (res.data && res.data.length > 0) {
+                res.data.forEach(function(item) {
+                    str += item.parent ? `
+                        <tr>
+                            <td><input type="checkbox" value="` + item.id + `"></td>
+                                <td>` + item.name + `</td>
+                                <td>` + item.parent.name + `</td>
+                                <td>` + item.comment + `</td>
+                                <td><span class="glyphicon glyphicon-edit to-update" data-id="` + item.id + `"></span><span  class="glyphicon glyphicon-trash" data-id="` + item.id + `"></span></td>
+                        </tr>
+                        ` : `
+                        <tr>
+                            <td><input type="checkbox" value="` + item.id + `"></td>
+                                <td>` + item.name + `</td>
+                                <td>-</td>
+                                <td>` + item.comment + `</td>
+                                <td><span class="glyphicon glyphicon-edit to-update" data-id="` + item.id + `"></span><span  class="glyphicon glyphicon-trash" data-id="` + item.id + `"></span></td>
+                        </tr>
+                        `;
+                });
+            }
+            $('#table-div tbody').html(str);
+            if (total > 1) {
+                $('.pagination').show();
+                setPaginator(page, total, findAll);
+            } else {
+                // setPaginator(page, total, findAll);
+                $('.pagination').hide();
+            }
+            console.log(res.data, page, '查找数据');
+        }, function(error) {
+            console.log(error, '=====');
+        });
+    }
+    //02删除==================================
+    $('#table-div tbody').click(function(e) {
+        var target = e.target;
+        var id = target.getAttribute("data-id");
+        //删除单个
+        if ($(target).hasClass('glyphicon-trash')) {
+            deleteById({ id: id }, '/manager/category/deleteCategoryById');
+        } else if ($(target).hasClass('glyphicon-edit')) {
+            //警告提示的隐藏
+            $('.warning').hide();
+            //假设是当前要修改的对象
+            //通过修改按钮获取当前要修改的id,向后台拿数据
+            var currentId = $(e.target).attr('data-id');
+            var obj = (datas.filter(function(item) {
+                return item.id == currentId;
+            }))[0];
+            //设置值
+            $('.modal [type=text]').eq(0).val(obj.name);
+            $('.modal textarea').val(obj.comment);
+            $('.modal-title').text('修改栏目信息');
+            $('#categoryModal').modal('show');
+            $('#to-save').click(function() {
+                var name = $('.modal [type=text]').eq(0).val();
+                var parentId = $('.modal select').val();
+                var comment = $('.modal textarea').val();
+                if (name && comment) {
+                    var obj = parentId != -1 ? {
+                        id: currentId,
+                        name: name,
+                        comment: comment,
+                        parentId: parentId
+                    } : {
+                        id: currentId,
+                        name: name,
+                        comment: comment,
+                    };
+                    //提交数据给后台
+                    saveOrUpdate(obj, '/manager/category/saveOrUpdateCategory');
+                    $('#categoryModal').modal('hide');
+                    //提交成功的回调函数里,更新数据,关闭模态框 
+                } else {
+                    //警告提示的显示
+                    $('.warning').show();
+                }
+            });
+        }
+    });
+    //03新增/删除多个===================================
+    $('.buttons .btn').click(function(e) {
+        var target = e.target;
+        if (target.innerText == '批量删除') {
+            var ids = Array.prototype.slice.call(document.getElementsByTagName("input"), 0).filter(function(item) {
+                return item.checked;
+            }).map(function(item) {
+                return item.value;
+            });
+            batchDelete(encodeFormData({ ids: ids }), '/manager/category/batchDeleteCategory');
+        } else if (target.innerText == '新增') {
+            $('.warning').hide();
+            // 清空表单数据,显示模态框
+            $('.modal [type=text]').eq(0).val(null);
+            $('.modal textarea').val(null);
+            $('.modal-title').text('新增栏目信息');
+            $('#categoryModal').modal('show');
+        }
+    });
+    $('#to-save').click(function() {
+                console.log(456);
+                var name = $('.modal [type=text]').eq(0).val();
+                var parentId = $('.modal select').val();
+                var comment = $('.modal textarea').val();
+                if (name && comment) {
+                    var obj = parentId != -1 ? {
+                        name: name,
+                        comment: comment,
+                        parentId: parentId
+                    } : {
+                        name: name,
+                        comment: comment,
+                    };
+                    //提交数据给后台
+                    saveOrUpdate(obj, '/manager/category/saveOrUpdateCategory');
+                    $('#categoryModal').modal('hide');
+                    //提交成功的回调函数里,更新数据,关闭模态框 
+                } else {
+                    $('.warning').show();
+                }
+            });
+
+    /*2.实现分页渲染======================*/
+    function setPaginator(pageCurr, pageSum, callback) {
+        /*获取需要初始的元素 使用bootstrapPaginator方法*/
+        $('.pagination').bootstrapPaginator({
+            /*当前使用的是3版本的bootstrap*/
+            bootstrapMajorVersion: 3,
+            /*配置的字体大小是小号*/
+            size: 'small',
+            /*当前页*/
+            currentPage: pageCurr,
+            /*一共多少页*/
+            totalPages: pageSum,
+            /*点击页面事件*/
+            onPageClicked: function(event, originalEvent, type, pag) {
+                page = pag;
+                /*改变当前页再渲染 page当前点击的按钮的页面*/
+                callback && callback();
+            }
+        });
+    }
+    </script>
+</div>

@@ -1,0 +1,171 @@
+<!-- 咨询管理 -->
+<div>
+    <div class="user-manage">
+        <!-- 按钮组 -->
+        <button type="button" class="btn btn-primary addBtn">新增</button>
+        <!-- 表格 -->
+        <div class="row" id="users-div">
+        </div>
+    </div>
+    <!-- 模态框 -->
+    <div class="modal" id="userModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-content" style="height: 729.6px;">
+                <div class="modal-header">
+                    <button class="btn btn-default close" data-dismiss="modal">&times;</button>
+                    <div class="modal-title col-sm-11 text-center">
+                        添加用户
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <!-- 表单 -->
+                    <form class="form">
+                        <div class="form-group">
+                            <label for="">用户名</label>
+                            <input type="text" name="username" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label for="">密码</label>
+                            <input type="password" name="password" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label for="">确认密码</label>
+                            <input type="password" name="password1" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label for="">真实姓名</label>
+                            <input type="text" name="nickname" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label for="">邮箱</label>
+                            <input type="email" name="email" class="form-control" />
+                        </div>
+                        <div class="form-group hide">
+                            <button type="reset">重置</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <span class="warning"></span>
+                    <button class="btn btn-success btn-sm saveBtn">确 认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    var height=$(window).height();
+    $('.modal,.modal-dialog,.modal-dialog,.ad_aside,.ad_section').attr('style', 'height:'+height+'px');
+    /*1.页面增删改查===================*/
+    // 01栏目管理获取数据==============
+    findAll();
+    function findAll() {
+        getAjax('/manager/user/findAllUser', 'GET', null, function(res) {
+            //渲染
+            var str = '';
+            if (res.data && res.data.length > 0) {
+                res.data.forEach(function(item, index) {
+                    str += `
+                <div class="col-sm-4">
+                <div class="thumbnail">
+                    <img style="width: 150px;height: 150px;border-radius:50%" src="./images/` + (index + 1) % 10 + `.jpg" alt="图片找不到了">
+                    <div class="caption">
+                        <div class="row">
+                            <div class="col-sm-4 col-sm-offset-1">用户名</div>
+                            <div class="col-sm-7">` + item.username + `</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4 col-sm-offset-1">真实姓名</div>
+                            <div class="col-sm-7">` + item.nickname + `</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4 col-sm-offset-1">注册时间</div>
+                            <div class="col-sm-7">` + item.regTime + `</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4 col-sm-offset-1">email</div>
+                            <div class="col-sm-7">` + item.email + `</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4 col-sm-offset-1">状态</div>
+                            <div class="col-sm-7">
+                                <input type="hidden" value="">
+                                <input type="checkbox" checked class="checkbox" data-id="` + item.id + `" value="` + item.enabled + `" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                    `;
+                });
+            }
+            $('#users-div').html(str);
+            /* 初始化控件switch */
+            $(".checkbox").bootstrapSwitch({
+                onText: "上线", // 设置ON文本  
+                offText: "下线", // 设置OFF文本  
+                onColor: "primary", // 设置ON文本颜色     (info/success/warning/danger/primary)  
+                offColor: "default", // 设置OFF文本颜色        (info/success/warning/danger/primary)  
+                size: "mini", // 设置控件大小,从小到大  (mini/small/normal/large)  
+                handleWidth: "35", //设置控件宽度
+                // 当开关状态改变时触发  
+                onSwitchChange: function(event, state) {
+                    var userId = $(event.target).attr('data-id');
+                    if (state == true) {
+                        var obj = {
+                            id: userId,
+                            status: state
+                        };
+                        changeStatus(obj, '/manager/user/changeStatus');
+                    } else {
+                        var obj = {
+                            id: userId,
+                            status: state
+                        };
+                        changeStatus(obj, '/manager/user/changeStatus');
+                    }
+                }
+            });
+            $(".checkbox").each(function(index, item) {
+                var flag = $(".checkbox")[index].value == "false" ? 0 : 1;
+                $($(".checkbox")[index]).bootstrapSwitch('state', flag);
+            });
+            console.log(res.data, '查找数据');
+        }, function(error) {
+            console.log(error, '=====');
+        });
+    }
+
+    //02新增===================================
+    $('.user-manage .addBtn').click(function(e) {
+        $('.warning').hide();
+        // 清空表单数据,显示模态框
+        $('.modal [type=text]').val(null);
+        $('#userModal').modal('show');
+        $('.saveBtn').off('click').on('click', function save() {
+            var username = $('.modal [type=text]').eq(0).val();
+            var password = $('.modal [type=password]').eq(0).val();
+            var password1 = $('.modal [type=password]').eq(1).val();
+            var nickname = $('.modal [type=text]').eq(1).val();
+            var email = $('.modal [type=email]').eq(0).val();
+            if (username && password && nickname && email) {
+                if (password != password1) {
+                    $('.warning').text('密码不一致').show();
+                } else {
+                    var obj = {
+                        username: username,
+                        password: password,
+                        nickname: nickname,
+                        email: email
+                    };
+                    //提交数据给后台
+                    saveOrUpdate(obj, '/manager/user/saveOrUpdateUser');
+                    $('#userModal').modal('hide');
+                    //提交成功的回调函数里,更新数据,关闭模态框 
+                }
+            } else {
+                $('.warning').text('请输入完整的信息').show();
+            }
+        });
+    });
+    </script>
+</div>
